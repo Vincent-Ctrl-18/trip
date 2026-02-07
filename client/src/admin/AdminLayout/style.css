@@ -1,0 +1,40 @@
+.admin-layout {
+  min-height: 100vh;
+}
+.admin-sider {
+  box-shadow: 2px 0 8px rgba(0,0,0,0.05);
+}
+.admin-logo {
+  padding: 16px 24px;
+  border-bottom: 1px solid #f0f0f0;
+}
+.admin-logo h2 {
+  margin: 0;
+  font-size: 18px;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+.admin-header {
+  background: #fff !important;
+  padding: 0 24px !important;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.05);
+  height: 56px;
+  line-height: 56px;
+}
+.header-left {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+.admin-content {
+  margin: 24px;
+  padding: 24px;
+  background: #fff;
+  border-radius: 8px;
+  min-height: 400px;
+}
