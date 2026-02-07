@@ -140,10 +140,10 @@ export default function SearchPage() {
           <div className="filter-options">
             {[
               { label: '不限', min: null, max: null },
-              { label: '?500以下', min: null, max: 500 },
-              { label: '?500-1000', min: 500, max: 1000 },
-              { label: '?1000-2000', min: 1000, max: 2000 },
-              { label: '?2000以上', min: 2000, max: null },
+              { label: '¥500以下', min: null, max: 500 },
+              { label: '¥500-1000', min: 500, max: 1000 },
+              { label: '¥1000-2000', min: 1000, max: 2000 },
+              { label: '¥2000以上', min: 2000, max: null },
             ].map((p) => (
               <div
                 key={p.label}

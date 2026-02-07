@@ -165,10 +165,10 @@ export default function DetailPage() {
               </div>
               <div className="room-price-area">
                 {room.original_price && room.original_price > room.price && (
-                  <div className="room-original-price">?{room.original_price}</div>
+                  <div className="room-original-price">¥{room.original_price}</div>
                 )}
                 <div className="room-price">
-                  <span className="price-sign">?</span>
+                  <span className="price-sign">¥</span>
                   <span className="price-amount">{room.price}</span>
                 </div>
               </div>

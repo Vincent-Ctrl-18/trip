@@ -136,10 +136,10 @@ export default function HotelForm() {
                       <Input placeholder="房型名称" />
                     </Form.Item>
                     <Form.Item {...restField} name={[name, 'price']} rules={[{ required: true, message: '价格' }]} style={{ flex: 1, minWidth: 100, marginBottom: 0 }}>
-                      <InputNumber placeholder="价格" min={0} style={{ width: '100%' }} prefix="?" />
+                      <InputNumber placeholder="价格" min={0} style={{ width: '100%' }} prefix="¥" />
                     </Form.Item>
                     <Form.Item {...restField} name={[name, 'original_price']} style={{ flex: 1, minWidth: 100, marginBottom: 0 }}>
-                      <InputNumber placeholder="原价（可选）" min={0} style={{ width: '100%' }} prefix="?" />
+                      <InputNumber placeholder="原价（可选）" min={0} style={{ width: '100%' }} prefix="¥" />
                     </Form.Item>
                     <Form.Item {...restField} name={[name, 'capacity']} style={{ width: 90, marginBottom: 0 }}>
                       <InputNumber placeholder="人数" min={1} max={10} style={{ width: '100%' }} />

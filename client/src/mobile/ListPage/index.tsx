@@ -72,7 +72,7 @@ export default function ListPage() {
         {store.tag && <span className="filter-tag">{store.tag}</span>}
         {(store.minPrice || store.maxPrice) && (
           <span className="filter-tag">
-            ?{store.minPrice || 0}-{store.maxPrice || '不限'}
+            ¥{store.minPrice || 0}-{store.maxPrice || '不限'}
           </span>
         )}
         {(store.star || store.tag || store.minPrice || store.maxPrice) && (
@@ -105,7 +105,7 @@ export default function ListPage() {
                 <div className="hotel-card-price">
                   {hotel.lowestPrice ? (
                     <>
-                      <span className="price-symbol">?</span>
+                      <span className="price-symbol">¥</span>
                       <span className="price-num">{hotel.lowestPrice}</span>
                       <span className="price-unit">起</span>
                     </>
