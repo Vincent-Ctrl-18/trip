@@ -1,0 +1,7 @@
+node_modules/
+dist/
+*.sqlite
+server/src/uploads/*
+!server/src/uploads/.gitkeep
+.env
+.DS_Store
