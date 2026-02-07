@@ -1,0 +1,177 @@
+.search-page {
+  min-height: 100vh;
+  background: #f5f7fa;
+}
+
+.banner-swiper {
+  height: 200px;
+}
+.banner-item {
+  height: 200px;
+  cursor: pointer;
+}
+.banner-bg {
+  height: 100%;
+  display: flex;
+  align-items: flex-end;
+  padding: 20px;
+}
+.banner-content {
+  color: #fff;
+}
+.banner-star {
+  font-size: 14px;
+  color: #ffd700;
+  margin-bottom: 4px;
+}
+.banner-name {
+  font-size: 20px;
+  font-weight: 700;
+  margin-bottom: 2px;
+}
+.banner-name-en {
+  font-size: 12px;
+  opacity: 0.85;
+}
+.banner-city {
+  font-size: 12px;
+  opacity: 0.7;
+  margin-top: 4px;
+}
+
+.search-area {
+  padding: 20px 16px;
+}
+.search-title {
+  font-size: 22px;
+  font-weight: 700;
+  color: #333;
+  margin-bottom: 16px;
+  text-align: center;
+}
+
+.search-field {
+  background: #fff;
+  border-radius: 10px;
+  padding: 12px 16px;
+  margin-bottom: 10px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  cursor: pointer;
+}
+.field-label {
+  font-size: 13px;
+  color: #999;
+  min-width: 48px;
+}
+.field-value {
+  font-size: 15px;
+  color: #333;
+  font-weight: 500;
+}
+.field-input {
+  border: none;
+  outline: none;
+  font-size: 15px;
+  flex: 1;
+  background: transparent;
+}
+
+.city-picker {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 10px;
+  padding: 12px;
+  background: #fff;
+  border-radius: 10px;
+}
+.city-item {
+  padding: 6px 16px;
+  border-radius: 20px;
+  background: #f0f0f0;
+  font-size: 14px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.city-item.active {
+  background: var(--primary-color);
+  color: #fff;
+}
+
+.date-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+.date-field {
+  flex: 1;
+  background: #fff;
+  border-radius: 10px;
+  padding: 12px 16px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+}
+.date-nights {
+  font-size: 13px;
+  color: #666;
+  white-space: nowrap;
+}
+
+.filter-section {
+  margin-bottom: 12px;
+}
+.filter-label {
+  font-size: 13px;
+  color: #999;
+  display: block;
+  margin-bottom: 8px;
+}
+.filter-options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.filter-options.tags {
+  gap: 6px;
+}
+.filter-chip {
+  padding: 6px 14px;
+  border-radius: 20px;
+  background: #fff;
+  font-size: 13px;
+  color: #666;
+  cursor: pointer;
+  transition: all 0.2s;
+  border: 1px solid #eee;
+}
+.filter-chip.active {
+  background: var(--primary-color);
+  color: #fff;
+  border-color: var(--primary-color);
+}
+.filter-chip.tag {
+  font-size: 12px;
+  padding: 4px 12px;
+}
+
+.search-btn {
+  width: 100%;
+  padding: 14px;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: #fff;
+  border: none;
+  border-radius: 10px;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  margin-top: 16px;
+  transition: opacity 0.2s;
+}
+.search-btn:active {
+  opacity: 0.85;
+}
