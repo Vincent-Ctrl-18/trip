@@ -1,7 +1,7 @@
 {
   "name": "trip-server",
   "version": "1.0.0",
-  "description": "���޾Ƶ�Ԥ��ƽ̨��˷���",
+  "description": "易宿酒店预订平台后端服务",
   "main": "dist/index.js",
   "scripts": {
     "dev": "tsx watch src/index.ts",
