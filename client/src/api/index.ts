@@ -67,6 +67,11 @@ export const uploadAPI = {
     fd.append('file', file);
     return api.post('/upload', fd, { headers: { 'Content-Type': 'multipart/form-data' } });
   },
+  uploadMultiple: (files: File[]) => {
+    const fd = new FormData();
+    files.forEach((f) => fd.append('files', f));
+    return api.post('/upload/multiple', fd, { headers: { 'Content-Type': 'multipart/form-data' } });
+  },
 };
 
 export default api;

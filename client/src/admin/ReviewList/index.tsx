@@ -1,22 +1,24 @@
 import { useEffect, useState } from 'react';
 import { Table, Tag, Button, Space, Select, message, Modal, Input } from 'antd';
-import { CheckOutlined, CloseOutlined, CloudUploadOutlined, StopOutlined, ReloadOutlined } from '@ant-design/icons';
+import { CheckOutlined, CloseOutlined, StopOutlined, ReloadOutlined } from '@ant-design/icons';
 import { hotelAPI } from '../../api';
-
-const statusMap: Record<string, { color: string; text: string }> = {
-  draft: { color: 'default', text: '草稿' },
-  pending: { color: 'processing', text: '待审核' },
-  approved: { color: 'success', text: '已通过' },
-  rejected: { color: 'error', text: '已拒绝' },
-  offline: { color: 'warning', text: '已下线' },
-};
+import { useT } from '../../i18n';
 
 export default function ReviewList() {
+  const { t } = useT();
   const [hotels, setHotels] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [statusFilter, setStatusFilter] = useState<string | undefined>(undefined);
   const [rejectModal, setRejectModal] = useState<{ open: boolean; hotelId: number | null }>({ open: false, hotelId: null });
   const [rejectReason, setRejectReason] = useState('');
+
+  const statusMap: Record<string, { color: string; text: string }> = {
+    draft: { color: 'default', text: t('status.draft') },
+    pending: { color: 'processing', text: t('status.pending') },
+    approved: { color: 'success', text: t('status.approved') },
+    rejected: { color: 'error', text: t('status.rejected') },
+    offline: { color: 'warning', text: t('status.offline') },
+  };
 
   const fetchHotels = async () => {
     setLoading(true);
@@ -26,22 +28,23 @@ export default function ReviewList() {
       const res = await hotelAPI.reviewList(params);
       setHotels(res.data);
     } catch (err: any) {
-      message.error(err.response?.data?.message || '获取列表失败');
+      message.error(err.response?.data?.message || t('admin.review.fetchFailed'));
     }
     setLoading(false);
   };
 
   useEffect(() => {
     fetchHotels();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [statusFilter]);
 
   const handleApprove = async (id: number) => {
     try {
       await hotelAPI.approve(id);
-      message.success('审核通过');
+      message.success(t('admin.review.approveSuccess'));
       fetchHotels();
     } catch (err: any) {
-      message.error(err.response?.data?.message || '操作失败');
+      message.error(err.response?.data?.message || t('admin.review.operationFailed'));
     }
   };
 
@@ -49,38 +52,38 @@ export default function ReviewList() {
     if (!rejectModal.hotelId) return;
     try {
       await hotelAPI.reject(rejectModal.hotelId, rejectReason);
-      message.success('已拒绝');
+      message.success(t('admin.review.rejectSuccess'));
       setRejectModal({ open: false, hotelId: null });
       setRejectReason('');
       fetchHotels();
     } catch (err: any) {
-      message.error(err.response?.data?.message || '操作失败');
+      message.error(err.response?.data?.message || t('admin.review.operationFailed'));
     }
   };
 
   const handleOffline = async (id: number) => {
     try {
       await hotelAPI.offline(id);
-      message.success('已下线');
+      message.success(t('admin.review.offlineSuccess'));
       fetchHotels();
     } catch (err: any) {
-      message.error(err.response?.data?.message || '操作失败');
+      message.error(err.response?.data?.message || t('admin.review.operationFailed'));
     }
   };
 
   const handleOnline = async (id: number) => {
     try {
       await hotelAPI.online(id);
-      message.success('已恢复上线');
+      message.success(t('admin.review.onlineSuccess'));
       fetchHotels();
     } catch (err: any) {
-      message.error(err.response?.data?.message || '操作失败');
+      message.error(err.response?.data?.message || t('admin.review.operationFailed'));
     }
   };
 
   const columns = [
     {
-      title: '酒店名称',
+      title: t('admin.hotelList.hotelName'),
       dataIndex: 'name_cn',
       key: 'name_cn',
       render: (text: string, record: any) => (
@@ -90,17 +93,17 @@ export default function ReviewList() {
         </div>
       ),
     },
-    { title: '城市', dataIndex: 'city', key: 'city', width: 80 },
+    { title: t('admin.hotelList.city'), dataIndex: 'city', key: 'city', width: 80 },
     {
-      title: '星级', dataIndex: 'star', key: 'star', width: 100,
+      title: t('admin.hotelList.star'), dataIndex: 'star', key: 'star', width: 100,
       render: (star: number) => <span style={{ color: '#ffa940' }}>{'★'.repeat(star)}</span>,
     },
     {
-      title: '房型数', key: 'rooms', width: 80,
-      render: (_: any, record: any) => (record.RoomTypes?.length || 0) + '个',
+      title: t('admin.hotelList.roomCount'), key: 'rooms', width: 80,
+      render: (_: any, record: any) => (record.RoomTypes?.length || 0),
     },
     {
-      title: '状态',
+      title: t('admin.hotelList.status'),
       dataIndex: 'status',
       key: 'status',
       width: 120,
@@ -116,7 +119,7 @@ export default function ReviewList() {
       ),
     },
     {
-      title: '操作',
+      title: t('admin.hotelList.action'),
       key: 'action',
       width: 280,
       render: (_: any, record: any) => (
@@ -124,24 +127,24 @@ export default function ReviewList() {
           {record.status === 'pending' && (
             <>
               <Button size="small" type="primary" icon={<CheckOutlined />} onClick={() => handleApprove(record.id)}>
-                通过
+                {t('admin.review.approve')}
               </Button>
               <Button size="small" danger icon={<CloseOutlined />} onClick={() => {
                 setRejectModal({ open: true, hotelId: record.id });
                 setRejectReason('');
               }}>
-                拒绝
+                {t('admin.review.reject')}
               </Button>
             </>
           )}
           {record.status === 'approved' && (
             <Button size="small" icon={<StopOutlined />} onClick={() => handleOffline(record.id)}>
-              下线
+              {t('admin.review.offline')}
             </Button>
           )}
           {record.status === 'offline' && (
             <Button size="small" type="primary" icon={<ReloadOutlined />} onClick={() => handleOnline(record.id)}>
-              恢复上线
+              {t('admin.review.online')}
             </Button>
           )}
         </Space>
@@ -152,17 +155,17 @@ export default function ReviewList() {
   return (
     <div>
       <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 16 }}>
-        <h2 style={{ margin: 0 }}>审核管理</h2>
+        <h2 style={{ margin: 0 }}>{t('admin.review.title')}</h2>
         <Space>
           <Select
-            placeholder="按状态筛选"
+            placeholder={t('admin.review.statusFilter')}
             allowClear
-            style={{ width: 140 }}
+            style={{ width: 160 }}
             value={statusFilter}
             onChange={(v) => setStatusFilter(v)}
             options={Object.entries(statusMap).map(([k, v]) => ({ value: k, label: v.text }))}
           />
-          <Button onClick={fetchHotels} icon={<ReloadOutlined />}>刷新</Button>
+          <Button onClick={fetchHotels} icon={<ReloadOutlined />}>{t('admin.review.refresh')}</Button>
         </Space>
       </div>
 
@@ -175,20 +178,20 @@ export default function ReviewList() {
       />
 
       <Modal
-        title="拒绝审核"
+        title={t('admin.review.rejectTitle')}
         open={rejectModal.open}
         onOk={handleReject}
         onCancel={() => setRejectModal({ open: false, hotelId: null })}
-        okText="确认拒绝"
-        cancelText="取消"
+        okText={t('admin.review.confirmReject')}
+        cancelText={t('common.cancel')}
         okButtonProps={{ danger: true }}
       >
-        <p>请输入拒绝原因：</p>
+        <p>{t('admin.review.rejectReason')}</p>
         <Input.TextArea
           rows={3}
           value={rejectReason}
           onChange={(e) => setRejectReason(e.target.value)}
-          placeholder="请说明拒绝原因..."
+          placeholder={t('admin.review.rejectPlaceholder')}
         />
       </Modal>
     </div>

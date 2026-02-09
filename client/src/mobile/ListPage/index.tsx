@@ -3,16 +3,21 @@ import { useNavigate } from 'react-router-dom';
 import { InfiniteScroll, DotLoading } from 'antd-mobile';
 import { hotelAPI } from '../../api';
 import useSearchStore from '../../stores/useSearchStore';
+import { useT, useLanguageStore, translateCity, translateTag, formatDate } from '../../i18n';
 import dayjs from 'dayjs';
 import './style.css';
 
 export default function ListPage() {
   const navigate = useNavigate();
   const store = useSearchStore();
+  const { t, lang } = useT();
+  const toggleLang = useLanguageStore((s) => s.toggleLang);
+
   const [hotels, setHotels] = useState<any[]>([]);
   const [hasMore, setHasMore] = useState(true);
   const pageRef = useRef(1);
   const pageSize = 10;
+  const [imgErrors, setImgErrors] = useState<Record<number, boolean>>({});
 
   const loadMore = async () => {
     try {
@@ -39,7 +44,6 @@ export default function ListPage() {
     }
   };
 
-  // Reset when search params change
   useEffect(() => {
     setHotels([]);
     pageRef.current = 1;
@@ -52,66 +56,119 @@ export default function ListPage() {
     try { return JSON.parse(str); } catch { return []; }
   };
 
+  const hasFilters = store.star || store.tag || store.minPrice || store.maxPrice;
+
+  const getFirstImage = (hotel: any): string | null => {
+    const images: string[] = parseJSON(hotel.images);
+    return images.length > 0 ? images[0] : null;
+  };
+
   return (
-    <div className="list-page">
-      {/* Top filter bar */}
-      <div className="list-header">
-        <div className="header-back" onClick={() => navigate('/m')}>←</div>
-        <div className="header-info">
-          <span className="header-city">{store.city || '全部城市'}</span>
-          <span className="header-date">
-            {dayjs(store.checkIn).format('MM/DD')}-{dayjs(store.checkOut).format('MM/DD')} · {nights}晚
+    <div className="lp-page">
+      {/* Header */}
+      <div className="lp-header">
+        <button className="lp-back-btn" onClick={() => navigate('/m')}>
+          <span className="material-symbols-outlined">arrow_back</span>
+        </button>
+        <div className="lp-header-info">
+          <span className="lp-header-city">
+            {store.city ? translateCity(store.city, lang) : t('list.allCities')}
+          </span>
+          <span className="lp-header-date">
+            {formatDate(store.checkIn, lang)} - {formatDate(store.checkOut, lang)} · {t('search.nights', { n: nights })}
           </span>
         </div>
-        {store.keyword && <div className="header-keyword">"{store.keyword}"</div>}
+        <div className="lp-header-right">
+          {store.keyword && (
+            <div className="lp-keyword-badge">"{store.keyword}"</div>
+          )}
+          <button className="lp-lang-btn" onClick={toggleLang}>
+            {lang === 'zh' ? 'EN' : '中'}
+          </button>
+        </div>
       </div>
 
-      {/* Filter tags */}
-      <div className="list-filters">
-        {store.star && <span className="filter-tag">{store.star}星</span>}
-        {store.tag && <span className="filter-tag">{store.tag}</span>}
-        {(store.minPrice || store.maxPrice) && (
-          <span className="filter-tag">
-            ¥{store.minPrice || 0}-{store.maxPrice || '不限'}
+      {/* Filter Tags */}
+      {hasFilters && (
+        <div className="lp-filters">
+          {store.star && (
+            <span className="lp-filter-tag">
+              <span className="material-symbols-outlined" style={{ fontSize: 14 }}>star</span>
+              {t('search.starN', { n: store.star })}
+            </span>
+          )}
+          {store.tag && (
+            <span className="lp-filter-tag">
+              <span className="material-symbols-outlined" style={{ fontSize: 14 }}>sell</span>
+              {translateTag(store.tag, lang)}
+            </span>
+          )}
+          {(store.minPrice || store.maxPrice) && (
+            <span className="lp-filter-tag">
+              <span className="material-symbols-outlined" style={{ fontSize: 14 }}>payments</span>
+              ¥{store.minPrice || 0}-{store.maxPrice || '∞'}
+            </span>
+          )}
+          <span
+            className="lp-filter-clear"
+            onClick={() => { store.setStar(null); store.setTag(''); store.setPriceRange(null, null); }}
+          >
+            {t('list.clearFilter')}
+            <span className="material-symbols-outlined" style={{ fontSize: 14 }}>close</span>
           </span>
-        )}
-        {(store.star || store.tag || store.minPrice || store.maxPrice) && (
-          <span className="filter-clear" onClick={() => { store.setStar(null); store.setTag(''); store.setPriceRange(null, null); }}>
-            清除筛选
-          </span>
-        )}
-      </div>
+        </div>
+      )}
 
-      {/* Hotel list */}
-      <div className="hotel-list">
+      {/* Hotel List */}
+      <div className="lp-list">
         {hotels.map((hotel: any) => {
-          const tags = parseJSON(hotel.tags);
+          const tags: string[] = parseJSON(hotel.tags);
+          const hotelName = lang === 'en' && hotel.name_en ? hotel.name_en : hotel.name_cn;
+          const imgUrl = getFirstImage(hotel);
+          const hasError = imgErrors[hotel.id];
+
           return (
-            <div key={hotel.id} className="hotel-card" onClick={() => navigate(`/m/hotel/${hotel.id}`)}>
-              <div className="hotel-card-img">
-                <div className="hotel-card-placeholder">
-                  <span>{hotel.name_cn.charAt(0)}</span>
+            <div key={hotel.id} className="lp-card" onClick={() => navigate(`/m/hotel/${hotel.id}`)}>
+              <div className="lp-card-img">
+                {imgUrl && !hasError ? (
+                  <img
+                    className="lp-card-real-img"
+                    src={imgUrl}
+                    alt={hotel.name_cn}
+                    onError={() => setImgErrors((prev) => ({ ...prev, [hotel.id]: true }))}
+                  />
+                ) : (
+                  <div className="lp-card-placeholder">
+                    <span className="lp-card-letter">{hotel.name_cn.charAt(0)}</span>
+                  </div>
+                )}
+                <div className="lp-card-star-badge">
+                  <span className="material-symbols-outlined" style={{ fontSize: 12 }}>star</span>
+                  {hotel.star}
                 </div>
               </div>
-              <div className="hotel-card-info">
-                <div className="hotel-card-name">{hotel.name_cn}</div>
-                <div className="hotel-card-star">{'★'.repeat(hotel.star)}{'☆'.repeat(5 - hotel.star)}</div>
-                <div className="hotel-card-addr">{hotel.address}</div>
-                <div className="hotel-card-tags">
-                  {tags.slice(0, 3).map((t: string) => (
-                    <span key={t} className="hotel-tag">{t}</span>
+              <div className="lp-card-body">
+                <div className="lp-card-name">{hotelName}</div>
+                <div className="lp-card-addr">
+                  <span className="material-symbols-outlined" style={{ fontSize: 13 }}>location_on</span>
+                  {hotel.address}
+                </div>
+                <div className="lp-card-tags">
+                  {tags.slice(0, 3).map((tg: string) => (
+                    <span key={tg} className="lp-tag">{translateTag(tg, lang)}</span>
                   ))}
                 </div>
-                <div className="hotel-card-price">
+                <div className="lp-card-bottom">
                   {hotel.lowestPrice ? (
-                    <>
-                      <span className="price-symbol">¥</span>
-                      <span className="price-num">{hotel.lowestPrice}</span>
-                      <span className="price-unit">起</span>
-                    </>
+                    <div className="lp-card-price">
+                      <span className="lp-price-sign">¥</span>
+                      <span className="lp-price-num">{hotel.lowestPrice}</span>
+                      <span className="lp-price-unit">{t('list.from')}</span>
+                    </div>
                   ) : (
-                    <span className="price-na">暂无报价</span>
+                    <span className="lp-price-na">{t('list.noPrice')}</span>
                   )}
+                  <span className="material-symbols-outlined lp-card-arrow">chevron_right</span>
                 </div>
               </div>
             </div>
@@ -120,7 +177,18 @@ export default function ListPage() {
       </div>
 
       <InfiniteScroll loadMore={loadMore} hasMore={hasMore}>
-        {hasMore ? <DotLoading /> : hotels.length === 0 ? '暂无酒店数据' : '没有更多了'}
+        <div className="lp-scroll-status">
+          {hasMore ? (
+            <DotLoading color="var(--primary)" />
+          ) : hotels.length === 0 ? (
+            <div className="lp-no-data">
+              <span className="material-symbols-outlined" style={{ fontSize: 48, color: 'var(--text-tertiary)' }}>search_off</span>
+              <p>{t('list.noHotels')}</p>
+            </div>
+          ) : (
+            <span className="lp-no-more">{t('common.noMore')}</span>
+          )}
+        </div>
       </InfiniteScroll>
     </div>
   );

@@ -3,19 +3,21 @@ import { useNavigate } from 'react-router-dom';
 import { Table, Button, Tag, Space, message, Popconfirm } from 'antd';
 import { PlusOutlined, EditOutlined, SendOutlined } from '@ant-design/icons';
 import { hotelAPI } from '../../api';
-
-const statusMap: Record<string, { color: string; text: string }> = {
-  draft: { color: 'default', text: '草稿' },
-  pending: { color: 'processing', text: '审核中' },
-  approved: { color: 'success', text: '已通过' },
-  rejected: { color: 'error', text: '已拒绝' },
-  offline: { color: 'warning', text: '已下线' },
-};
+import { useT } from '../../i18n';
 
 export default function HotelList() {
   const navigate = useNavigate();
+  const { t } = useT();
   const [hotels, setHotels] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
+
+  const statusMap: Record<string, { color: string; text: string }> = {
+    draft: { color: 'default', text: t('status.draft') },
+    pending: { color: 'processing', text: t('status.pending') },
+    approved: { color: 'success', text: t('status.approved') },
+    rejected: { color: 'error', text: t('status.rejected') },
+    offline: { color: 'warning', text: t('status.offline') },
+  };
 
   const fetchHotels = async () => {
     setLoading(true);
@@ -23,28 +25,29 @@ export default function HotelList() {
       const res = await hotelAPI.myHotels();
       setHotels(res.data);
     } catch (err: any) {
-      message.error(err.response?.data?.message || '获取酒店列表失败');
+      message.error(err.response?.data?.message || t('admin.hotelList.fetchFailed'));
     }
     setLoading(false);
   };
 
   useEffect(() => {
     fetchHotels();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const handleSubmit = async (id: number) => {
     try {
       await hotelAPI.submit(id);
-      message.success('已提交审核');
+      message.success(t('admin.hotelList.submitSuccess'));
       fetchHotels();
     } catch (err: any) {
-      message.error(err.response?.data?.message || '提交失败');
+      message.error(err.response?.data?.message || t('admin.hotelList.submitFailed'));
     }
   };
 
   const columns = [
     {
-      title: '酒店名称',
+      title: t('admin.hotelList.hotelName'),
       dataIndex: 'name_cn',
       key: 'name_cn',
       render: (text: string, record: any) => (
@@ -54,19 +57,19 @@ export default function HotelList() {
         </div>
       ),
     },
-    { title: '城市', dataIndex: 'city', key: 'city', width: 80 },
+    { title: t('admin.hotelList.city'), dataIndex: 'city', key: 'city', width: 80 },
     {
-      title: '星级', dataIndex: 'star', key: 'star', width: 100,
+      title: t('admin.hotelList.star'), dataIndex: 'star', key: 'star', width: 100,
       render: (star: number) => <span style={{ color: '#ffa940' }}>{'★'.repeat(star)}</span>,
     },
     {
-      title: '房型数',
+      title: t('admin.hotelList.roomCount'),
       key: 'rooms',
       width: 80,
-      render: (_: any, record: any) => (record.RoomTypes?.length || 0) + '个',
+      render: (_: any, record: any) => (record.RoomTypes?.length || 0),
     },
     {
-      title: '状态',
+      title: t('admin.hotelList.status'),
       dataIndex: 'status',
       key: 'status',
       width: 100,
@@ -75,25 +78,25 @@ export default function HotelList() {
           <Tag color={statusMap[status]?.color}>{statusMap[status]?.text}</Tag>
           {status === 'rejected' && record.reject_reason && (
             <div style={{ fontSize: 12, color: '#ff4d4f', marginTop: 4 }}>
-              原因: {record.reject_reason}
+              {t('admin.hotelList.reason')}: {record.reject_reason}
             </div>
           )}
         </div>
       ),
     },
     {
-      title: '操作',
+      title: t('admin.hotelList.action'),
       key: 'action',
       width: 200,
       render: (_: any, record: any) => (
         <Space>
           <Button size="small" icon={<EditOutlined />} onClick={() => navigate(`/admin/hotels/edit/${record.id}`)}>
-            编辑
+            {t('admin.hotelList.edit')}
           </Button>
           {['draft', 'rejected'].includes(record.status) && (
-            <Popconfirm title="确认提交审核？" onConfirm={() => handleSubmit(record.id)}>
+            <Popconfirm title={t('admin.hotelList.submitConfirm')} onConfirm={() => handleSubmit(record.id)}>
               <Button size="small" type="primary" icon={<SendOutlined />}>
-                提交审核
+                {t('admin.hotelList.submit')}
               </Button>
             </Popconfirm>
           )}
@@ -105,9 +108,9 @@ export default function HotelList() {
   return (
     <div>
       <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 16 }}>
-        <h2 style={{ margin: 0 }}>我的酒店</h2>
+        <h2 style={{ margin: 0 }}>{t('admin.hotelList.title')}</h2>
         <Button type="primary" icon={<PlusOutlined />} onClick={() => navigate('/admin/hotels/create')}>
-          新增酒店
+          {t('admin.hotelList.add')}
         </Button>
       </div>
       <Table

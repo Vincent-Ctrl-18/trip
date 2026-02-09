@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useT, formatCalendarTitle } from '../../i18n';
 import dayjs from 'dayjs';
 import './style.css';
 
@@ -9,9 +10,10 @@ interface Props {
   onClose: () => void;
 }
 
-const WEEKDAYS = ['日', '一', '二', '三', '四', '五', '六'];
-
 export default function CalendarPicker({ value, minDate, onSelect, onClose }: Props) {
+  const { tArray, lang } = useT();
+  const weekdays = tArray('calendar.weekdays');
+
   const [current, setCurrent] = useState(dayjs(value));
   const year = current.year();
   const month = current.month(); // 0-indexed
@@ -35,6 +37,11 @@ export default function CalendarPicker({ value, minDate, onSelect, onClose }: Pr
     return d === value;
   };
 
+  const isToday = (day: number) => {
+    const d = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+    return d === dayjs().format('YYYY-MM-DD');
+  };
+
   const handlePrev = () => setCurrent(current.subtract(1, 'month'));
   const handleNext = () => setCurrent(current.add(1, 'month'));
 
@@ -45,26 +52,41 @@ export default function CalendarPicker({ value, minDate, onSelect, onClose }: Pr
   };
 
   return (
-    <div className="calendar-overlay" onClick={onClose}>
-      <div className="calendar-modal" onClick={(e) => e.stopPropagation()}>
-        <div className="calendar-header">
-          <button className="cal-nav" onClick={handlePrev}>&lt;</button>
-          <span className="cal-title">{year}年{month + 1}月</span>
-          <button className="cal-nav" onClick={handleNext}>&gt;</button>
+    <div className="cal-overlay" onClick={onClose}>
+      <div className="cal-modal" onClick={(e) => e.stopPropagation()}>
+        {/* Handle bar */}
+        <div className="cal-handle">
+          <div className="cal-handle-bar" />
         </div>
-        <div className="calendar-weekdays">
-          {WEEKDAYS.map((w) => (
-            <div key={w} className="weekday">{w}</div>
+
+        {/* Header */}
+        <div className="cal-header">
+          <button className="cal-nav-btn" onClick={handlePrev}>
+            <span className="material-symbols-outlined">chevron_left</span>
+          </button>
+          <span className="cal-title">{formatCalendarTitle(year, month, lang)}</span>
+          <button className="cal-nav-btn" onClick={handleNext}>
+            <span className="material-symbols-outlined">chevron_right</span>
+          </button>
+        </div>
+
+        {/* Weekdays */}
+        <div className="cal-weekdays">
+          {weekdays.map((w) => (
+            <div key={w} className="cal-weekday">{w}</div>
           ))}
         </div>
-        <div className="calendar-days">
+
+        {/* Days Grid */}
+        <div className="cal-days">
           {days.map((day, idx) => (
             <div
               key={idx}
-              className={`day-cell ${day === null ? 'empty' : ''} ${day && isDisabled(day) ? 'disabled' : ''} ${day && isSelected(day) ? 'selected' : ''}`}
+              className={`cal-day ${day === null ? 'empty' : ''} ${day && isDisabled(day) ? 'disabled' : ''} ${day && isSelected(day) ? 'selected' : ''} ${day && isToday(day) ? 'today' : ''}`}
               onClick={() => day && handleClick(day)}
             >
               {day}
+              {day && isToday(day) && !isSelected(day) && <span className="cal-today-dot" />}
             </div>
           ))}
         </div>
