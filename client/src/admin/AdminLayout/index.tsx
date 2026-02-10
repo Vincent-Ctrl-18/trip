@@ -19,8 +19,11 @@ export default function AdminLayout() {
   useEffect(() => {
     if (!user) {
       navigate('/admin/login');
+    } else if (location.pathname === '/admin' || location.pathname === '/admin/') {
+      // Default redirect based on role
+      navigate(user.role === 'admin' ? '/admin/review' : '/admin/hotels', { replace: true });
     }
-  }, [user, navigate]);
+  }, [user, navigate, location.pathname]);
 
   if (!user) return null;
 

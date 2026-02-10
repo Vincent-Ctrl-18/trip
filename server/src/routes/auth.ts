@@ -9,12 +9,22 @@ const router = Router();
 // POST /api/auth/register
 router.post('/register', async (req: Request, res: Response) => {
   try {
-    const { username, password, role } = req.body;
+    const { username, password, role, inviteCode } = req.body;
     if (!username || !password) {
       return res.status(400).json({ message: '用户名和密码不能为空' });
     }
+    if (password.length < 6) {
+      return res.status(400).json({ message: '密码至少6位' });
+    }
     if (!['merchant', 'admin'].includes(role)) {
       return res.status(400).json({ message: '角色必须是 merchant 或 admin' });
+    }
+    // Admin registration requires invite code
+    if (role === 'admin') {
+      const expectedCode = process.env.ADMIN_INVITE_CODE || 'easystay-admin-2024';
+      if (!inviteCode || inviteCode !== expectedCode) {
+        return res.status(403).json({ message: '管理员邀请码无效' });
+      }
     }
     const existing = await User.findOne({ where: { username } });
     if (existing) {

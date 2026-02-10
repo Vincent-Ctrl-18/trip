@@ -5,7 +5,7 @@ import { UserOutlined, LockOutlined } from '@ant-design/icons';
 import { authAPI } from '../../api';
 import useAuthStore from '../../stores/useAuthStore';
 import { useT, useLanguageStore } from '../../i18n';
-import './style.css';
+import '../shared/auth.css';
 
 export default function LoginPage() {
   const navigate = useNavigate();

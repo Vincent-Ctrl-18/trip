@@ -1,17 +1,32 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Swiper } from 'antd-mobile';
 import { hotelAPI } from '../../api';
 import useSearchStore from '../../stores/useSearchStore';
+import { getFirstImageUrl, parseJSON } from '../../utils';
 import {
   useT, useLanguageStore,
   CITIES_DATA, TAGS_DATA,
-  translateCity, translateTag, formatDate,
+  translateCity, formatDate,
 } from '../../i18n';
 import type { Language } from '../../i18n';
 import CalendarPicker from '../../components/CalendarPicker';
 import dayjs from 'dayjs';
 import './style.css';
+
+const SEARCH_HISTORY_KEY = 'trip-search-history';
+const MAX_HISTORY = 8;
+
+function getSearchHistory(): string[] {
+  return parseJSON<string[]>(localStorage.getItem(SEARCH_HISTORY_KEY)) ?? [];
+}
+
+function addSearchHistory(keyword: string) {
+  if (!keyword.trim()) return;
+  const history = getSearchHistory().filter((h) => h !== keyword.trim());
+  history.unshift(keyword.trim());
+  localStorage.setItem(SEARCH_HISTORY_KEY, JSON.stringify(history.slice(0, MAX_HISTORY)));
+}
 
 export default function SearchPage() {
   const navigate = useNavigate();
@@ -23,15 +38,26 @@ export default function SearchPage() {
   const [showCalendar, setShowCalendar] = useState(false);
   const [calendarType, setCalendarType] = useState<'checkIn' | 'checkOut'>('checkIn');
   const [showCityPicker, setShowCityPicker] = useState(false);
+  const [showRoomPicker, setShowRoomPicker] = useState(false);
   const [imgErrors, setImgErrors] = useState<Record<number, boolean>>({});
+  const [searchHistory, setSearchHistory] = useState<string[]>(getSearchHistory);
 
   useEffect(() => {
     hotelAPI.banner().then((res) => setBanners(res.data)).catch(() => {});
   }, []);
 
   const handleSearch = () => {
+    if (store.keyword.trim()) {
+      addSearchHistory(store.keyword);
+      setSearchHistory(getSearchHistory());
+    }
     navigate('/m/list');
   };
+
+  const clearHistory = useCallback(() => {
+    localStorage.removeItem(SEARCH_HISTORY_KEY);
+    setSearchHistory([]);
+  }, []);
 
   const handleBannerClick = (id: number) => {
     navigate(`/m/hotel/${id}`);
@@ -56,13 +82,8 @@ export default function SearchPage() {
 
   const nights = dayjs(store.checkOut).diff(dayjs(store.checkIn), 'day');
 
-  const parseJSON = (str: string) => {
-    try { return JSON.parse(str); } catch { return []; }
-  };
-
   const getBannerImg = (h: any): string | null => {
-    const images: string[] = parseJSON(h.images);
-    return images.length > 0 ? images[0] : null;
+    return getFirstImageUrl(h.images);
   };
 
   return (
@@ -182,6 +203,50 @@ export default function SearchPage() {
           </div>
         </div>
 
+        {/* Room & Guest */}
+        <div className="sp-field" onClick={() => setShowRoomPicker(!showRoomPicker)}>
+          <div className="sp-field-icon">
+            <span className="material-symbols-outlined">hotel</span>
+          </div>
+          <div className="sp-field-body">
+            <span className="sp-field-label">{t('search.roomGuest')}</span>
+            <span className="sp-field-value">
+              {t('search.rooms', { n: store.roomCount })} · {t('search.adults', { n: store.adultCount })}
+            </span>
+          </div>
+          <span className="material-symbols-outlined sp-field-arrow">expand_more</span>
+        </div>
+
+        {/* Room/Guest Picker */}
+        {showRoomPicker && (
+          <div className="sp-room-picker">
+            <div className="sp-room-picker-row">
+              <span className="sp-room-picker-label">{t('search.roomCount')}</span>
+              <div className="sp-counter">
+                <button className="sp-counter-btn" onClick={() => store.setRoomCount(store.roomCount - 1)} disabled={store.roomCount <= 1}>
+                  <span className="material-symbols-outlined">remove</span>
+                </button>
+                <span className="sp-counter-value">{store.roomCount}</span>
+                <button className="sp-counter-btn" onClick={() => store.setRoomCount(store.roomCount + 1)} disabled={store.roomCount >= 10}>
+                  <span className="material-symbols-outlined">add</span>
+                </button>
+              </div>
+            </div>
+            <div className="sp-room-picker-row">
+              <span className="sp-room-picker-label">{t('search.adultCount')}</span>
+              <div className="sp-counter">
+                <button className="sp-counter-btn" onClick={() => store.setAdultCount(store.adultCount - 1)} disabled={store.adultCount <= 1}>
+                  <span className="material-symbols-outlined">remove</span>
+                </button>
+                <span className="sp-counter-value">{store.adultCount}</span>
+                <button className="sp-counter-btn" onClick={() => store.setAdultCount(store.adultCount + 1)} disabled={store.adultCount >= 20}>
+                  <span className="material-symbols-outlined">add</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Keyword */}
         <div className="sp-field">
           <div className="sp-field-icon">
@@ -197,6 +262,33 @@ export default function SearchPage() {
             />
           </div>
         </div>
+
+        {/* Search History */}
+        {searchHistory.length > 0 && (
+          <div className="sp-history">
+            <div className="sp-history-header">
+              <span className="sp-history-title">
+                <span className="material-symbols-outlined" style={{ fontSize: 16 }}>history</span>
+                {t('search.history')}
+              </span>
+              <button className="sp-history-clear" onClick={clearHistory}>
+                <span className="material-symbols-outlined" style={{ fontSize: 14 }}>delete</span>
+                {t('search.clearHistory')}
+              </button>
+            </div>
+            <div className="sp-history-chips">
+              {searchHistory.map((kw) => (
+                <span
+                  key={kw}
+                  className="sp-history-chip"
+                  onClick={() => { store.setKeyword(kw); }}
+                >
+                  {kw}
+                </span>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* Star Filter */}
         <div className="sp-filter">

@@ -1,19 +1,37 @@
+import 'dotenv/config';
 import express from 'express';
 import cors from 'cors';
 import path from 'path';
+import rateLimit from 'express-rate-limit';
 import { sequelize } from './models';
 import authRoutes from './routes/auth';
 import hotelRoutes from './routes/hotels';
-import roomRoutes from './routes/rooms';
 import uploadRoutes from './routes/upload';
 
 const app = express();
 const PORT = process.env.PORT || 3001;
 
+// CORS configuration
+const allowedOrigins = (process.env.CORS_ORIGINS || 'http://localhost:5173').split(',').map(s => s.trim());
+app.use(cors({
+  origin: allowedOrigins,
+  credentials: true,
+}));
+
 // Middleware
-app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+
+// Rate limiting for auth routes
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 20, // 20 requests per window
+  message: { message: '请求过于频繁，请稍后再试' },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+app.use('/api/auth/login', authLimiter);
+app.use('/api/auth/register', authLimiter);
 
 // Static files - uploaded images
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
@@ -21,7 +39,6 @@ app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 // Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/hotels', hotelRoutes);
-app.use('/api', roomRoutes);
 app.use('/api/upload', uploadRoutes);
 
 // Health check

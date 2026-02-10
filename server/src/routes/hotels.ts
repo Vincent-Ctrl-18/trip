@@ -1,6 +1,6 @@
 import { Router, Request, Response } from 'express';
-import { Op } from 'sequelize';
-import { Hotel, RoomType, NearbyPlace } from '../models';
+import { Op, Sequelize } from 'sequelize';
+import { Hotel, RoomType, NearbyPlace, sequelize as db } from '../models';
 import { authenticate, requireRole } from '../middleware/auth';
 
 const router = Router();
@@ -15,14 +15,36 @@ router.get('/search', async (req: Request, res: Response) => {
 
     if (city) where.city = city as string;
     if (keyword) {
+      const kw = String(keyword).replace(/[%_]/g, '\\$&'); // escape SQL wildcards
       where[Op.or] = [
-        { name_cn: { [Op.like]: `%${keyword}%` } },
-        { name_en: { [Op.like]: `%${keyword}%` } },
-        { address: { [Op.like]: `%${keyword}%` } },
+        { name_cn: { [Op.like]: `%${kw}%` } },
+        { name_en: { [Op.like]: `%${kw}%` } },
+        { address: { [Op.like]: `%${kw}%` } },
       ];
     }
     if (star) where.star = Number(star);
-    if (tag) where.tags = { [Op.like]: `%${tag}%` };
+    if (tag) {
+      const safeTag = String(tag).replace(/[%_]/g, '\\$&');
+      where.tags = { [Op.like]: `%"${safeTag}"%` };
+    }
+
+    // Filter by price range at SQL level using subquery
+    if (minPrice || maxPrice) {
+      const priceConditions: string[] = [];
+      if (minPrice) priceConditions.push(`min_price >= ${Number(minPrice)}`);
+      if (maxPrice) priceConditions.push(`min_price <= ${Number(maxPrice)}`);
+      where.id = {
+        [Op.in]: Sequelize.literal(
+          `(SELECT hotel_id FROM room_types GROUP BY hotel_id HAVING ${priceConditions.join(' AND ')})`
+        ),
+      };
+      // alias min_price = MIN(price) in the subquery
+      where.id = {
+        [Op.in]: Sequelize.literal(
+          `(SELECT hotel_id FROM room_types GROUP BY hotel_id HAVING ${priceConditions.map(c => c.replace('min_price', 'MIN(price)')).join(' AND ')})`
+        ),
+      };
+    }
 
     const offset = (Number(page) - 1) * Number(pageSize);
     const { rows, count } = await Hotel.findAndCountAll({
@@ -34,21 +56,8 @@ router.get('/search', async (req: Request, res: Response) => {
       distinct: true,
     });
 
-    // Filter by price range if specified
-    let filtered = rows;
-    if (minPrice || maxPrice) {
-      filtered = rows.filter((h) => {
-        const rooms = h.RoomTypes || [];
-        if (rooms.length === 0) return true;
-        const lowest = Math.min(...rooms.map((r) => r.price));
-        if (minPrice && lowest < Number(minPrice)) return false;
-        if (maxPrice && lowest > Number(maxPrice)) return false;
-        return true;
-      });
-    }
-
     // Add lowestPrice to each hotel
-    const result = filtered.map((h) => {
+    const result = rows.map((h) => {
       const plain: any = h.toJSON();
       const rooms = plain.RoomTypes || [];
       plain.lowestPrice = rooms.length > 0 ? Math.min(...rooms.map((r: any) => r.price)) : null;
@@ -251,6 +260,9 @@ router.put('/:id/approve', authenticate, requireRole('admin'), async (req: Reque
   try {
     const hotel = await Hotel.findByPk(req.params.id);
     if (!hotel) return res.status(404).json({ message: '酒店不存在' });
+    if (hotel.status !== 'pending') {
+      return res.status(400).json({ message: '只有待审核状态的酒店可以通过审核' });
+    }
     await hotel.update({ status: 'approved', reject_reason: '', updated_at: new Date() });
     res.json({ message: '审核通过' });
   } catch (err: any) {
@@ -263,21 +275,12 @@ router.put('/:id/reject', authenticate, requireRole('admin'), async (req: Reques
   try {
     const hotel = await Hotel.findByPk(req.params.id);
     if (!hotel) return res.status(404).json({ message: '酒店不存在' });
+    if (hotel.status !== 'pending') {
+      return res.status(400).json({ message: '只有待审核状态的酒店可以拒绝' });
+    }
     const { reason } = req.body;
     await hotel.update({ status: 'rejected', reject_reason: reason || '未通过审核', updated_at: new Date() });
     res.json({ message: '已拒绝' });
-  } catch (err: any) {
-    res.status(500).json({ message: err.message });
-  }
-});
-
-// PUT /api/hotels/:id/publish
-router.put('/:id/publish', authenticate, requireRole('admin'), async (req: Request, res: Response) => {
-  try {
-    const hotel = await Hotel.findByPk(req.params.id);
-    if (!hotel) return res.status(404).json({ message: '酒店不存在' });
-    await hotel.update({ status: 'approved', updated_at: new Date() });
-    res.json({ message: '已发布上线' });
   } catch (err: any) {
     res.status(500).json({ message: err.message });
   }
@@ -288,6 +291,9 @@ router.put('/:id/offline', authenticate, requireRole('admin'), async (req: Reque
   try {
     const hotel = await Hotel.findByPk(req.params.id);
     if (!hotel) return res.status(404).json({ message: '酒店不存在' });
+    if (hotel.status !== 'approved') {
+      return res.status(400).json({ message: '只有已通过的酒店可以下线' });
+    }
     await hotel.update({ status: 'offline', updated_at: new Date() });
     res.json({ message: '已下线' });
   } catch (err: any) {

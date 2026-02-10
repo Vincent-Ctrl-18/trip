@@ -5,7 +5,7 @@ import { UserOutlined, LockOutlined } from '@ant-design/icons';
 import { authAPI } from '../../api';
 import useAuthStore from '../../stores/useAuthStore';
 import { useT, useLanguageStore } from '../../i18n';
-import './style.css';
+import '../shared/auth.css';
 
 export default function RegisterPage() {
   const navigate = useNavigate();
@@ -14,8 +14,9 @@ export default function RegisterPage() {
   const toggleLang = useLanguageStore((s) => s.toggleLang);
   const lang = useLanguageStore((s) => s.lang);
   const [loading, setLoading] = useState(false);
+  const [selectedRole, setSelectedRole] = useState('merchant');
 
-  const onFinish = async (values: { username: string; password: string; role: string }) => {
+  const onFinish = async (values: { username: string; password: string; role: string; inviteCode?: string }) => {
     setLoading(true);
     try {
       const res = await authAPI.register(values);
@@ -53,11 +54,16 @@ export default function RegisterPage() {
             <Input.Password prefix={<LockOutlined />} placeholder={t('admin.register.passwordPlaceholder')} />
           </Form.Item>
           <Form.Item name="role" label={t('admin.register.role')} rules={[{ required: true }]}>
-            <Radio.Group>
+            <Radio.Group onChange={(e) => setSelectedRole(e.target.value)}>
               <Radio value="merchant">{t('admin.register.merchant')}</Radio>
               <Radio value="admin">{t('admin.register.admin')}</Radio>
             </Radio.Group>
           </Form.Item>
+          {selectedRole === 'admin' && (
+            <Form.Item name="inviteCode" rules={[{ required: true, message: t('admin.register.inviteCodeRequired') }]}>
+              <Input prefix={<LockOutlined />} placeholder={t('admin.register.inviteCodePlaceholder')} />
+            </Form.Item>
+          )}
           <Form.Item>
             <Button type="primary" htmlType="submit" loading={loading} block>
               {t('admin.register.button')}

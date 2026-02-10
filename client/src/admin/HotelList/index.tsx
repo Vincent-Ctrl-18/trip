@@ -118,7 +118,7 @@ export default function HotelList() {
         columns={columns}
         rowKey="id"
         loading={loading}
-        pagination={false}
+        pagination={{ pageSize: 10, showSizeChanger: false, showTotal: (total) => `${total} items` }}
       />
     </div>
   );

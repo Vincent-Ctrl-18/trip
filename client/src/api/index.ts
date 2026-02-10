@@ -31,7 +31,7 @@ api.interceptors.response.use(
 
 // ========== Auth API ==========
 export const authAPI = {
-  register: (data: { username: string; password: string; role: string }) =>
+  register: (data: { username: string; password: string; role: string; inviteCode?: string }) =>
     api.post('/auth/register', data),
   login: (data: { username: string; password: string }) =>
     api.post('/auth/login', data),
@@ -55,7 +55,6 @@ export const hotelAPI = {
   reviewList: (params?: Record<string, any>) => api.get('/hotels/review', { params }),
   approve: (id: number | string) => api.put(`/hotels/${id}/approve`),
   reject: (id: number | string, reason: string) => api.put(`/hotels/${id}/reject`, { reason }),
-  publish: (id: number | string) => api.put(`/hotels/${id}/publish`),
   offline: (id: number | string) => api.put(`/hotels/${id}/offline`),
   online: (id: number | string) => api.put(`/hotels/${id}/online`),
 };
@@ -66,11 +65,6 @@ export const uploadAPI = {
     const fd = new FormData();
     fd.append('file', file);
     return api.post('/upload', fd, { headers: { 'Content-Type': 'multipart/form-data' } });
-  },
-  uploadMultiple: (files: File[]) => {
-    const fd = new FormData();
-    files.forEach((f) => fd.append('files', f));
-    return api.post('/upload/multiple', fd, { headers: { 'Content-Type': 'multipart/form-data' } });
   },
 };
 

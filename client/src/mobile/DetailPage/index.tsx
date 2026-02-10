@@ -1,9 +1,10 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Swiper, DotLoading } from 'antd-mobile';
 import { hotelAPI } from '../../api';
 import useSearchStore from '../../stores/useSearchStore';
 import { useT, useLanguageStore, translateTag, getFacilityInfo, getNearbyTypeLabel, formatDate } from '../../i18n';
+import { parseJSON } from '../../utils';
 import CalendarPicker from '../../components/CalendarPicker';
 import dayjs from 'dayjs';
 import './style.css';
@@ -23,6 +24,64 @@ export default function DetailPage() {
   const [activeImg, setActiveImg] = useState(0);
   const [heroImgErrors, setHeroImgErrors] = useState<Record<number, boolean>>({});
   const [roomImgErrors, setRoomImgErrors] = useState<Record<number, boolean>>({});
+  const [showNavTitle, setShowNavTitle] = useState(false);
+  const [selectedRoom, setSelectedRoom] = useState<any>(null);
+  const [bookingSuccess, setBookingSuccess] = useState(false);
+  const [favorited, setFavorited] = useState(false);
+  const [showAllAmenities, setShowAllAmenities] = useState(false);
+
+  const roomsSectionRef = useRef<HTMLDivElement>(null);
+  const scrollRef = useRef<HTMLDivElement>(null);
+
+  // Load favorite state from localStorage
+  useEffect(() => {
+    if (id) {
+      const favs: string[] = JSON.parse(localStorage.getItem('favorites') || '[]');
+      setFavorited(favs.includes(String(id)));
+    }
+  }, [id]);
+
+  const toggleFavorite = () => {
+    const favs: string[] = JSON.parse(localStorage.getItem('favorites') || '[]');
+    const hotelId = String(id);
+    if (favs.includes(hotelId)) {
+      localStorage.setItem('favorites', JSON.stringify(favs.filter(f => f !== hotelId)));
+      setFavorited(false);
+    } else {
+      localStorage.setItem('favorites', JSON.stringify([...favs, hotelId]));
+      setFavorited(true);
+    }
+  };
+
+  const handleShare = async () => {
+    const shareData = {
+      title: hotel?.name_cn || 'EasyStay Hotel',
+      text: hotel ? `${hotel.name_cn} - ${hotel.address}` : '',
+      url: window.location.href,
+    };
+    if (navigator.share) {
+      try {
+        await navigator.share(shareData);
+      } catch { /* user cancelled */ }
+    } else {
+      await navigator.clipboard.writeText(window.location.href);
+    }
+  };
+
+  // Show hotel name in nav when scrolled past hero
+  const handleScroll = useCallback(() => {
+    if (scrollRef.current) {
+      setShowNavTitle(scrollRef.current.scrollTop > 300);
+    }
+  }, []);
+
+  useEffect(() => {
+    const el = scrollRef.current;
+    if (el) {
+      el.addEventListener('scroll', handleScroll, { passive: true });
+      return () => el.removeEventListener('scroll', handleScroll);
+    }
+  }, [handleScroll]);
 
   useEffect(() => {
     if (!id) return;
@@ -36,9 +95,30 @@ export default function DetailPage() {
 
   if (loading) {
     return (
-      <div className="dp-loading">
-        <DotLoading color="var(--primary)" />
-        <span>{t('common.loading')}</span>
+      <div className="dp-page">
+        {/* Skeleton Header */}
+        <div className="dp-skeleton-header">
+          <div className="dp-skeleton-img dp-skeleton-pulse" />
+          <div className="dp-skeleton-header-bar">
+            <div className="dp-skeleton-circle dp-skeleton-pulse" />
+            <div className="dp-skeleton-line dp-skeleton-pulse" style={{ width: '40%', height: 14 }} />
+          </div>
+        </div>
+        {/* Skeleton Body */}
+        <div className="dp-skeleton-body">
+          <div className="dp-skeleton-line dp-skeleton-pulse" style={{ width: '70%', height: 20, marginBottom: 12 }} />
+          <div className="dp-skeleton-line dp-skeleton-pulse" style={{ width: '50%', height: 14, marginBottom: 20 }} />
+          <div className="dp-skeleton-line dp-skeleton-pulse" style={{ width: '90%', height: 14, marginBottom: 8 }} />
+          <div className="dp-skeleton-line dp-skeleton-pulse" style={{ width: '60%', height: 14, marginBottom: 24 }} />
+          <div style={{ display: 'flex', gap: 8, marginBottom: 24 }}>
+            {[1, 2, 3, 4].map((i) => (
+              <div key={i} className="dp-skeleton-chip dp-skeleton-pulse" />
+            ))}
+          </div>
+          <div className="dp-skeleton-line dp-skeleton-pulse" style={{ width: '40%', height: 16, marginBottom: 12 }} />
+          <div className="dp-skeleton-card dp-skeleton-pulse" />
+          <div className="dp-skeleton-card dp-skeleton-pulse" />
+        </div>
       </div>
     );
   }
@@ -52,10 +132,6 @@ export default function DetailPage() {
     );
   }
 
-  const parseJSON = (str: string) => {
-    try { return JSON.parse(str); } catch { return []; }
-  };
-
   const tags: string[] = parseJSON(hotel.tags);
   const facilities: string[] = parseJSON(hotel.facilities);
   const images: string[] = parseJSON(hotel.images);
@@ -63,6 +139,7 @@ export default function DetailPage() {
   const nearby = hotel.NearbyPlaces || [];
   const nights = dayjs(store.checkOut).diff(dayjs(store.checkIn), 'day');
   const lowestPrice = rooms.length > 0 ? rooms[0].price : null;
+  const displayPrice = selectedRoom ? selectedRoom.price : lowestPrice;
 
   const tagColors = ['blue', 'purple', 'orange', 'green', 'pink'];
   const hotelDisplayName = lang === 'en' && hotel.name_en ? hotel.name_en : hotel.name_cn;
@@ -89,10 +166,19 @@ export default function DetailPage() {
     return imgs.length > 0 ? imgs[0] : null;
   };
 
+  const scrollToRooms = () => {
+    if (roomsSectionRef.current && scrollRef.current) {
+      const container = scrollRef.current;
+      const target = roomsSectionRef.current;
+      const targetTop = target.getBoundingClientRect().top - container.getBoundingClientRect().top + container.scrollTop;
+      container.scrollTo({ top: targetTop - 10, behavior: 'smooth' });
+    }
+  };
+
   return (
     <div className="dp-page">
       {/* Scrollable Content */}
-      <div className="dp-scroll no-scrollbar">
+      <div className="dp-scroll no-scrollbar" ref={scrollRef}>
         {/* Hero Image */}
         <div className="dp-hero">
           {images.length > 0 ? (
@@ -151,18 +237,21 @@ export default function DetailPage() {
         </div>
 
         {/* Floating Nav */}
-        <div className="dp-float-nav">
+        <div className={`dp-float-nav ${showNavTitle ? 'dp-nav-solid' : ''}`}>
           <button className="dp-nav-btn" onClick={() => navigate(-1)}>
             <span className="material-symbols-outlined">arrow_back</span>
           </button>
+          {showNavTitle && (
+            <div className="dp-nav-title">{hotelDisplayName}</div>
+          )}
           <div className="dp-nav-right">
             <button className="dp-nav-btn" onClick={toggleLang}>
               {lang === 'zh' ? 'EN' : '中'}
             </button>
-            <button className="dp-nav-btn">
-              <span className="material-symbols-outlined">favorite</span>
+            <button className="dp-nav-btn" onClick={toggleFavorite}>
+              <span className="material-symbols-outlined" style={favorited ? { fontVariationSettings: "'FILL' 1", color: '#ef4444' } : undefined}>favorite</span>
             </button>
-            <button className="dp-nav-btn">
+            <button className="dp-nav-btn" onClick={handleShare}>
               <span className="material-symbols-outlined">ios_share</span>
             </button>
           </div>
@@ -236,7 +325,7 @@ export default function DetailPage() {
               <section className="dp-section">
                 <div className="dp-section-header">
                   <h3 className="dp-section-title">{t('detail.amenities')}</h3>
-                  <button className="dp-see-all">{t('detail.seeAll')}</button>
+                  <button className="dp-see-all" onClick={() => setShowAllAmenities(true)}>{t('detail.seeAll')}</button>
                 </div>
                 <div className="dp-amenities no-scrollbar">
                   {facilities.map((f: string) => {
@@ -254,7 +343,7 @@ export default function DetailPage() {
               </section>
             )}
 
-            {/* Your Stay - Date Selection */}
+            {/* Your Stay - Date + Room/Guest */}
             <section className="dp-section">
               <h3 className="dp-section-title">{t('detail.yourStay')}</h3>
               <div className="dp-date-card">
@@ -268,10 +357,39 @@ export default function DetailPage() {
                   <span className="dp-date-value">{formatDate(store.checkOut, lang)}</span>
                 </div>
               </div>
+              {/* Room & Guest Info */}
+              <div className="dp-stay-info">
+                <div className="dp-stay-item">
+                  <span className="material-symbols-outlined dp-stay-icon">meeting_room</span>
+                  <span className="dp-stay-text">{t('search.rooms', { n: store.roomCount })}</span>
+                  <div className="dp-stay-counter">
+                    <button className="dp-stay-btn" onClick={() => store.setRoomCount(store.roomCount - 1)} disabled={store.roomCount <= 1}>
+                      <span className="material-symbols-outlined">remove</span>
+                    </button>
+                    <span className="dp-stay-val">{store.roomCount}</span>
+                    <button className="dp-stay-btn" onClick={() => store.setRoomCount(store.roomCount + 1)} disabled={store.roomCount >= 10}>
+                      <span className="material-symbols-outlined">add</span>
+                    </button>
+                  </div>
+                </div>
+                <div className="dp-stay-item">
+                  <span className="material-symbols-outlined dp-stay-icon">person</span>
+                  <span className="dp-stay-text">{t('search.adults', { n: store.adultCount })}</span>
+                  <div className="dp-stay-counter">
+                    <button className="dp-stay-btn" onClick={() => store.setAdultCount(store.adultCount - 1)} disabled={store.adultCount <= 1}>
+                      <span className="material-symbols-outlined">remove</span>
+                    </button>
+                    <span className="dp-stay-val">{store.adultCount}</span>
+                    <button className="dp-stay-btn" onClick={() => store.setAdultCount(store.adultCount + 1)} disabled={store.adultCount >= 20}>
+                      <span className="material-symbols-outlined">add</span>
+                    </button>
+                  </div>
+                </div>
+              </div>
             </section>
 
             {/* Room Types */}
-            <section className="dp-section">
+            <section className="dp-section" ref={roomsSectionRef}>
               <h3 className="dp-section-title">{t('detail.rooms')}</h3>
               {rooms.length === 0 ? (
                 <p className="dp-empty-text">{t('detail.noRooms')}</p>
@@ -281,7 +399,7 @@ export default function DetailPage() {
                     const roomImg = getRoomImage(room);
                     const hasRoomImgError = roomImgErrors[room.id];
                     return (
-                      <div key={room.id} className="dp-room-card">
+                      <div key={room.id} className="dp-room-card" onClick={() => setSelectedRoom(room)}>
                         {/* Room Image */}
                         <div className="dp-room-img-wrap">
                           {roomImg && !hasRoomImgError ? (
@@ -355,16 +473,146 @@ export default function DetailPage() {
           <span className="dp-price-label">{t('detail.totalPrice')}</span>
           <div className="dp-price-row">
             <span className="dp-bottom-amount">
-              {lowestPrice ? `¥${lowestPrice}` : '--'}
+              {displayPrice ? `¥${displayPrice * nights * store.roomCount}` : '--'}
             </span>
-            <span className="dp-price-per">{t('detail.perNight')}</span>
+            <span className="dp-price-per">
+              {displayPrice ? t('detail.priceBreakdown', { price: displayPrice, nights, rooms: store.roomCount }) : t('detail.perNight')}
+            </span>
           </div>
         </div>
-        <button className="dp-select-btn">
+        <button className="dp-select-btn" onClick={scrollToRooms}>
           {t('detail.selectRoom')}
           <span className="material-symbols-outlined" style={{ fontSize: 18 }}>arrow_forward</span>
         </button>
       </div>
+
+      {/* Booking Bottom Sheet */}
+      {selectedRoom && !bookingSuccess && (
+        <div className="dp-booking-overlay">
+          <div className="dp-booking-mask" onClick={() => setSelectedRoom(null)} />
+          <div className="dp-booking-sheet">
+            <div className="dp-sheet-handle"><div className="handle-bar" /></div>
+            <h3 className="dp-booking-title">{t('detail.orderDetail')}</h3>
+
+            {/* Room Header */}
+            <div className="dp-booking-room-header">
+              <div className="dp-booking-room-img">
+                {getRoomImage(selectedRoom) ? (
+                  <img src={getRoomImage(selectedRoom)!} alt={selectedRoom.name} />
+                ) : (
+                  <div className="dp-booking-room-placeholder">
+                    <span className="material-symbols-outlined">bed</span>
+                  </div>
+                )}
+              </div>
+              <div className="dp-booking-room-info">
+                <div className="dp-booking-room-name">{selectedRoom.name}</div>
+                <div className="dp-booking-room-meta">
+                  <span className="material-symbols-outlined" style={{ fontSize: 14 }}>person</span>
+                  {t('detail.capacity', { n: selectedRoom.capacity })}
+                  {selectedRoom.breakfast && (
+                    <> · <span className="material-symbols-outlined" style={{ fontSize: 14 }}>restaurant</span>{t('detail.breakfast')}</>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* Order Details */}
+            <div className="dp-booking-details">
+              <div className="dp-booking-row">
+                <span className="dp-booking-label">{t('detail.dateRange')}</span>
+                <span className="dp-booking-value">{formatDate(store.checkIn, lang)} - {formatDate(store.checkOut, lang)}</span>
+              </div>
+              <div className="dp-booking-row">
+                <span className="dp-booking-label">{t('detail.nightCount')}</span>
+                <span className="dp-booking-value">{nights}{t('detail.nightUnit')}</span>
+              </div>
+              <div className="dp-booking-row">
+                <span className="dp-booking-label">{t('detail.roomCountLabel')}</span>
+                <span className="dp-booking-value">{store.roomCount}{t('detail.roomUnit')}</span>
+              </div>
+              <div className="dp-booking-row">
+                <span className="dp-booking-label">{t('detail.guestCount')}</span>
+                <span className="dp-booking-value">{store.adultCount}{t('detail.adultUnit')}</span>
+              </div>
+              <div className="dp-booking-row">
+                <span className="dp-booking-label">{t('detail.unitPrice')}</span>
+                <span className="dp-booking-value dp-booking-price-val">¥{selectedRoom.price}{t('detail.perNight')}</span>
+              </div>
+              <div className="dp-booking-divider" />
+              <div className="dp-booking-row dp-booking-total">
+                <span className="dp-booking-label">{t('detail.totalAmount')}</span>
+                <span className="dp-booking-value dp-booking-total-val">¥{selectedRoom.price * nights * store.roomCount}</span>
+              </div>
+            </div>
+
+            <button
+              className="dp-booking-confirm-btn"
+              onClick={() => setBookingSuccess(true)}
+            >
+              {t('detail.bookConfirm')}
+              <span className="material-symbols-outlined" style={{ fontSize: 18 }}>check</span>
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Booking Success Overlay */}
+      {bookingSuccess && selectedRoom && (
+        <div className="dp-success-overlay">
+          <div className="dp-success-content">
+            <div className="dp-success-icon">
+              <span className="material-symbols-outlined">check_circle</span>
+            </div>
+            <h2 className="dp-success-title">{t('detail.bookSuccess')}</h2>
+            <p className="dp-success-msg">
+              {t('detail.bookSuccessMsg', { hotel: hotelDisplayName, room: selectedRoom.name })}
+            </p>
+            <div className="dp-success-summary">
+              <div className="dp-success-row">
+                <span>{t('detail.dateRange')}</span>
+                <span>{formatDate(store.checkIn, lang)} - {formatDate(store.checkOut, lang)}</span>
+              </div>
+              <div className="dp-success-row">
+                <span>{t('detail.totalAmount')}</span>
+                <span className="dp-success-amount">¥{selectedRoom.price * nights * store.roomCount}</span>
+              </div>
+            </div>
+            <div className="dp-success-actions">
+              <button className="dp-success-btn-secondary" onClick={() => { setBookingSuccess(false); setSelectedRoom(null); }}>
+                {t('common.back')}
+              </button>
+              <button className="dp-success-btn-primary" onClick={() => navigate('/m')}>
+                {t('detail.backToHome')}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* All Amenities Modal */}
+      {showAllAmenities && (
+        <div className="dp-booking-overlay">
+          <div className="dp-booking-mask" onClick={() => setShowAllAmenities(false)} />
+          <div className="dp-booking-sheet" style={{ maxHeight: '60vh' }}>
+            <div className="dp-sheet-handle"><div className="handle-bar" /></div>
+            <h3 className="dp-booking-title">{t('detail.amenities')}</h3>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12, padding: '0 4px 16px' }}>
+              {facilities.map((f: string) => {
+                const info = getFacilityInfo(f, lang);
+                return (
+                  <div key={f} className="dp-amenity-card">
+                    <div className="dp-amenity-icon">
+                      <span className="material-symbols-outlined">{info.icon}</span>
+                    </div>
+                    <span className="dp-amenity-name">{info.name}</span>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Calendar Modal */}
       {showCalendar && (
