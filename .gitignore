@@ -5,3 +5,5 @@ server/src/uploads/*
 !server/src/uploads/.gitkeep
 .env
 .DS_Store
+schedule.md
+schedule2.md
