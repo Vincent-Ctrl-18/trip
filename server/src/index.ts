@@ -2,8 +2,9 @@ import 'dotenv/config';
 import express from 'express';
 import cors from 'cors';
 import path from 'path';
+import { execSync } from 'child_process';
 import rateLimit from 'express-rate-limit';
-import { sequelize } from './models';
+import { sequelize, Hotel } from './models';
 import authRoutes from './routes/auth';
 import hotelRoutes from './routes/hotels';
 import uploadRoutes from './routes/upload';
@@ -51,6 +52,22 @@ async function start() {
   try {
     await sequelize.sync({ alter: true });
     console.log('Database synced');
+
+    // Auto-seed if database is empty (no hotels)
+    const hotelCount = await Hotel.count();
+    if (hotelCount === 0) {
+      console.log('Database is empty, seeding initial data...');
+      try {
+        execSync('npx tsx src/seed.ts', {
+          cwd: path.join(__dirname, '..'),
+          stdio: 'inherit',
+        });
+        console.log('Seed data initialized successfully');
+      } catch (seedErr) {
+        console.error('Warning: Failed to seed initial data:', seedErr);
+      }
+    }
+
     app.listen(PORT, () => {
       console.log(`Server running on http://localhost:${PORT}`);
     });
